@@ -1,0 +1,33 @@
+{
+  "geode": "v5.11.1",
+  "gd": { "android": "2.2081", "win": "2.2081" },
+  "id": "magmituber.ai-structure-decorator",
+  "name": "AI Structure Decorator",
+  "version": "v0.1.0",
+  "developer": "magmituber",
+  "description": "Uses Gemini to suggest and place decorative Geometry Dash objects around a selected structure.",
+  "tags": ["editor", "utility", "online", "enhancement"],
+  "settings": {
+    "api-key-title": { "type": "title", "name": "Gemini API" },
+    "gemini-api-key": {
+      "type": "string",
+      "name": "Gemini API key",
+      "description": "Stored in this device's Geode settings. Do not share it.",
+      "default": ""
+    },
+    "decoration-prompt": {
+      "type": "string",
+      "name": "Decoration style",
+      "description": "Describe the decoration style you want around the selected structure.",
+      "default": "Create clean Geometry Dash 2D decoration with outlines, small details and balanced symmetry. Do not cover the structure."
+    },
+    "max-objects": {
+      "type": "int",
+      "name": "Maximum objects",
+      "description": "Maximum number of decorative objects created per request (1-40).",
+      "default": 20,
+      "min": 1,
+      "max": 40
+    }
+  }
+}
