@@ -113,7 +113,7 @@ class $modify(AIStructureDecoratorEditorUI, EditorUI) {
                     double nx = xResult.unwrap(), ny = yResult.unwrap();
                     if (id < 1 || id > 999 || nx < 0.0 || nx > 1.0 || ny < 0.0 || ny > 1.0) continue;
                     CCPoint position(static_cast<float>(minX + (maxX - minX) * nx), static_cast<float>(minY + (maxY - minY) * ny));
-                    if (this->m_editorLayer && this->createObject(id, position, true)) ++created;
+                    if (this->m_editorLayer && this->createObject(id, position)) ++created;
                 }
                 if (created > 0) {
                     this->updateButtons();
@@ -122,4 +122,4 @@ class $modify(AIStructureDecoratorEditorUI, EditorUI) {
                 } else { showMessage("AI Structure Decorator", "No valid decorative objects were created. Try another style or select a larger structure."); }
             });
     }
-}
+};
