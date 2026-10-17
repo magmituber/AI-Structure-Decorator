@@ -16,7 +16,6 @@ namespace {
     }
 
     bool isSlope(int id) {
-        // Base slopes and the large set of 1.8+ slope variants.
         switch (id) {
             case 6: case 7:
             case 289: case 291: case 294: case 295: case 296: case 297:
@@ -46,7 +45,6 @@ namespace {
             case 1091: case 1092: case 1107: case 1108:
             case 1187: case 1188: case 1198: case 1199:
             case 1206: case 1207: case 1224: case 1225:
-            // Relisted old outline slopes.
             case 1338: case 1339:
             case 1743: case 1744: case 1745: case 1746: case 1747:
             case 1748: case 1749: case 1750:
@@ -56,91 +54,18 @@ namespace {
         }
     }
 
-    enum class Shape { Block, Slope, WideSlope, Spike };
-
-    Shape getShape(GameObject* object) {
-        auto id = object ? object->m_objectID : 1;
-        if (isSpike(id)) return Shape::Spike;
+    // Real Geometry Dash object IDs used as the visual templates.
+    // 1 = block, 6 = slope, 7 = wide slope, 8 = spike.
+    int getPreviewTemplateID(GameObject* object) {
+        if (!object) return 1;
+        auto id = object->m_objectID;
+        if (isSpike(id)) return 8;
         if (isSlope(id)) {
             auto size = object->getContentSize();
-            return size.width >= size.height * 1.65f ? Shape::WideSlope : Shape::Slope;
+            return size.width >= size.height * 1.65f ? 7 : 6;
         }
-        return Shape::Block;
+        return 1;
     }
-
-    class WhiteShapeNode : public CCNode {
-        CCDrawNode* m_draw = nullptr;
-        GameObject* m_source = nullptr;
-    public:
-        static WhiteShapeNode* create(GameObject* source) {
-            auto ret = new WhiteShapeNode();
-            if (ret && ret->initWithSource(source)) { ret->autorelease(); return ret; }
-            CC_SAFE_DELETE(ret);
-            return nullptr;
-        }
-
-        bool initWithSource(GameObject* source) {
-            if (!CCNode::init() || !source) return false;
-            m_source = source;
-            auto size = source->getContentSize();
-            if (size.width < 1.f) size.width = 30.f;
-            if (size.height < 1.f) size.height = 30.f;
-            m_draw = CCDrawNode::create();
-            if (!m_draw) return false;
-            this->addChild(m_draw);
-
-            ccColor4F white = {1.f, 1.f, 1.f, 1.f};
-            ccColor4F transparent = {1.f, 1.f, 1.f, 0.f};
-            constexpr float outlineWidth = 2.5f;
-            float halfW = size.width * 0.5f;
-            float halfH = size.height * 0.5f;
-            CCPoint points[4];
-
-            switch (getShape(source)) {
-                case Shape::Spike:
-                    points[0] = CCPointMake(-halfW, -halfH);
-                    points[1] = CCPointMake(halfW, -halfH);
-                    points[2] = CCPointMake(0.f, halfH);
-                    m_draw->drawPolygon(points, 3, transparent, outlineWidth, white);
-                    break;
-                case Shape::Slope:
-                case Shape::WideSlope:
-                    points[0] = CCPointMake(-halfW, -halfH);
-                    points[1] = CCPointMake(halfW, -halfH);
-                    points[2] = CCPointMake(halfW, halfH);
-                    m_draw->drawPolygon(points, 3, transparent, outlineWidth, white);
-                    break;
-                default:
-                    m_draw->drawRect({-halfW, -halfH}, {halfW, halfH}, transparent, outlineWidth, white);
-                    break;
-            }
-
-            this->setContentSize(size);
-            this->setAnchorPoint({0.5f, 0.5f});
-            this->setPosition(source->getPosition());
-            this->setRotation(source->getRotation());
-            this->setScaleX(source->getScaleX());
-            this->setScaleY(source->getScaleY());
-            return true;
-        }
-
-        bool syncToLayer(CCNode* layer) {
-            if (!layer || !m_source) return false;
-            auto sourceParent = m_source->getParent();
-            if (!sourceParent) return false;
-
-            // The preview itself lives on the editor UI layer to avoid CCSpriteBatchNode
-            // crashes. Recalculate its screen position every frame from the source object's
-            // current world position, so camera panning/zooming affects it exactly like the
-            // real object instead of leaving it glued to the screen.
-            auto worldPosition = sourceParent->convertToWorldSpace(m_source->getPosition());
-            this->setPosition(layer->convertToNodeSpace(worldPosition));
-            this->setRotation(m_source->getRotation());
-            this->setScaleX(m_source->getScaleX());
-            this->setScaleY(m_source->getScaleY());
-            return true;
-        }
-    };
 
     class DraggableMenu : public CCMenu {
         CCMenuItemSpriteExtra* m_pressed = nullptr;
@@ -154,6 +79,7 @@ namespace {
             CC_SAFE_DELETE(ret);
             return nullptr;
         }
+
         bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
             auto point = this->convertTouchToNodeSpace(touch);
             m_pressed = nullptr;
@@ -175,6 +101,7 @@ namespace {
             m_dragging = false;
             return true;
         }
+
         void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
             if (!m_pressed) return;
             auto parent = this->getParent();
@@ -194,11 +121,13 @@ namespace {
                 this->setPosition(pos);
             }
         }
+
         void ccTouchEnded(CCTouch* touch, CCEvent* event) override {
             if (m_pressed && !m_dragging) m_pressed->activate();
             m_pressed = nullptr;
             m_dragging = false;
         }
+
         void ccTouchCancelled(CCTouch* touch, CCEvent* event) override {
             m_pressed = nullptr;
             m_dragging = false;
@@ -206,62 +135,58 @@ namespace {
     };
 }
 
-class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
+class $modify(WhiteStructurePreviewEditorUI_v05, EditorUI) {
     struct Fields {
         DraggableMenu* menu = nullptr;
         CCMenuItemSpriteExtra* previewButton = nullptr;
         CCMenuItemSpriteExtra* confirmButton = nullptr;
-        std::vector<WhiteShapeNode*> previews;
+        std::vector<GameObject*> previews;
         bool previewVisible = false;
     };
 
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
+
         auto menu = DraggableMenu::create();
         if (!menu) return true;
-        menu->setID("white-preview-menu-v04"_spr);
+        menu->setID("white-preview-menu-v05"_spr);
+
         auto previewLabel = CCLabelBMFont::create("PREVIEW", "bigFont.fnt");
         auto confirmLabel = CCLabelBMFont::create("CONFIRM", "bigFont.fnt");
         if (!previewLabel || !confirmLabel) return true;
         previewLabel->setScale(0.35f);
         confirmLabel->setScale(0.35f);
-        auto preview = CCMenuItemSpriteExtra::create(previewLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v04::onPreview));
-        auto confirm = CCMenuItemSpriteExtra::create(confirmLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v04::onConfirm));
+
+        auto preview = CCMenuItemSpriteExtra::create(
+            previewLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v05::onPreview)
+        );
+        auto confirm = CCMenuItemSpriteExtra::create(
+            confirmLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v05::onConfirm)
+        );
         if (!preview || !confirm) return true;
+
         auto size = CCDirector::sharedDirector()->getWinSize();
         menu->setPosition({size.width * 0.5f, size.height - 72.f});
         preview->setPosition({-48.f, 0.f});
         confirm->setPosition({48.f, 0.f});
-        preview->setID("white-preview-button-v04"_spr);
-        confirm->setID("white-confirm-button-v04"_spr);
+        preview->setID("white-preview-button-v05"_spr);
+        confirm->setID("white-confirm-button-v05"_spr);
+
         menu->addChild(preview);
         menu->addChild(confirm);
         confirm->setVisible(false);
         this->addChild(menu, 1001);
+
         m_fields->menu = menu;
         m_fields->previewButton = preview;
         m_fields->confirmButton = confirm;
         return true;
     }
 
-    void update(float dt) {
-        EditorUI::update(dt);
-        if (!m_fields->previewVisible || !m_editorLayer) return;
-        for (auto* preview : m_fields->previews) {
-            if (!preview) continue;
-            if (!preview->syncToLayer(this)) {
-                preview->setVisible(false);
-            } else {
-                preview->setVisible(true);
-            }
-        }
-    }
-
     void clearPreview() {
         for (auto* preview : m_fields->previews) {
             if (!preview) continue;
             if (preview->getParent()) preview->removeFromParentAndCleanup(true);
-            preview->release();
         }
         m_fields->previews.clear();
         m_fields->previewVisible = false;
@@ -287,31 +212,54 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
 
     void onPreview(CCObject*) {
         clearPreview();
-        if (!m_editorLayer) return;
+        if (!m_editorLayer || !m_editorLayer->m_objectLayer) return;
+
         auto selected = getSelection();
         if (selected.empty()) {
             showMessage("White Structure Preview", "Select one or more blocks, ramps or spikes first.");
             return;
         }
-        for (auto object : selected) {
-            if (!object) continue;
-            auto sourceParent = object->getParent();
-            if (!sourceParent) continue;
-            auto preview = WhiteShapeNode::create(object);
+
+        auto objectLayer = m_editorLayer->m_objectLayer;
+        unsigned int previewIndex = 0;
+
+        for (auto* source : selected) {
+            if (!source || !source->getParent()) continue;
+
+            // Create a REAL Geometry Dash GameObject from one of GD's native
+            // block/slope/spike templates. This means the preview lives in the
+            // normal world object layer and automatically follows camera movement
+            // and zoom, unlike the old CCDrawNode implementation.
+            auto preview = GameObject::createWithKey(getPreviewTemplateID(source));
             if (!preview) continue;
 
-            // Keep the custom draw node out of CCSpriteBatchNode. It is attached to
-            // EditorUI and synchronized with the source object's world position every frame.
-            preview->syncToLayer(this);
-            preview->retain();
-            this->addChild(preview, 100000);
+            // Give the temporary node its own Geode identifier. It is not inserted
+            // into the level's saved object collection, so it cannot be confused
+            // with or saved as the original level object.
+            preview->setID("white-structure-preview-object"_spr);
+            preview->setTag(-100500 - static_cast<int>(previewIndex++));
+            preview->setColor({255, 255, 255});
+            preview->setOpacity(190);
+
+            auto sourceParent = source->getParent();
+            auto worldPosition = sourceParent->convertToWorldSpace(source->getPosition());
+            preview->setPosition(objectLayer->convertToNodeSpace(worldPosition));
+            preview->setRotation(source->getRotation());
+            preview->setScaleX(source->getScaleX());
+            preview->setScaleY(source->getScaleY());
+
+            // IMPORTANT: add directly to the world object layer, not EditorUI.
+            // This is what makes it camera-aware and prevents the old screen-fixed bug.
+            objectLayer->addChild(preview, 100000);
             m_fields->previews.push_back(preview);
         }
+
         if (m_fields->previews.empty()) {
             clearPreview();
             showMessage("White Structure Preview", "The selected objects could not be previewed.");
             return;
         }
+
         m_fields->previewVisible = true;
         if (m_fields->confirmButton) m_fields->confirmButton->setVisible(true);
     }
