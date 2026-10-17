@@ -3,8 +3,8 @@
   "gd": { "android": "2.2081", "win": "2.2081" },
   "id": "magmituber.ai-structure-decorator",
   "name": "White Structure Preview",
-  "version": "v0.2.0",
+  "version": "v0.3.0",
   "developer": "magmituber",
-  "description": "Preview selected Geometry Dash editor objects as white blocks and confirm them as white blocks.",
+  "description": "Creates custom pure-white editor-only shapes matching selected blocks, two slope sizes, and spike sizes.",
   "tags": ["editor", "utility", "enhancement"]
 }
