@@ -113,23 +113,67 @@ namespace {
             return true;
         }
     };
+
+    // The two editor buttons can be dragged together. A normal tap still activates the button.
+    class DraggableMenu : public CCMenu {
+        CCPoint m_lastTouch = CCPointZero;
+        bool m_dragging = false;
+
+    public:
+        static DraggableMenu* create() {
+            auto ret = new DraggableMenu();
+            if (ret && ret->init()) {
+                ret->autorelease();
+                return ret;
+            }
+            CC_SAFE_DELETE(ret);
+            return nullptr;
+        }
+
+        bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
+            if (!CCMenu::ccTouchBegan(touch, event)) return false;
+            m_lastTouch = touch->getLocation();
+            m_dragging = false;
+            return true;
+        }
+
+        void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
+            auto now = touch->getLocation();
+            auto delta = now - m_lastTouch;
+            if (delta.x != 0.f || delta.y != 0.f) {
+                m_dragging = true;
+                this->setPosition(this->getPosition() + delta);
+            }
+            m_lastTouch = now;
+            CCMenu::ccTouchMoved(touch, event);
+        }
+
+        void ccTouchEnded(CCTouch* touch, CCEvent* event) override {
+            CCMenu::ccTouchEnded(touch, event);
+            m_dragging = false;
+        }
+
+        void ccTouchCancelled(CCTouch* touch, CCEvent* event) override {
+            CCMenu::ccTouchCancelled(touch, event);
+            m_dragging = false;
+        }
+    };
 }
 
 class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
     struct Fields {
-        CCMenu* menu = nullptr;
+        DraggableMenu* menu = nullptr;
         CCMenuItemSpriteExtra* previewButton = nullptr;
         CCMenuItemSpriteExtra* confirmButton = nullptr;
         std::vector<GameObject*> selected;
         std::vector<WhiteShapeNode*> previews;
-        std::vector<GLubyte> originalOpacity;
         bool previewVisible = false;
     };
 
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
 
-        auto menu = CCMenu::create();
+        auto menu = DraggableMenu::create();
         if (!menu) return true;
         menu->setID("white-preview-menu"_spr);
         menu->setPosition({0.f, 0.f});
@@ -166,18 +210,12 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
         return true;
     }
 
-    void clearPreview(bool restoreOriginals = true) {
+    void clearPreview() {
         for (auto* preview : m_fields->previews) {
             if (preview) preview->removeFromParentAndCleanup(true);
         }
-        if (restoreOriginals) {
-            for (size_t i = 0; i < m_fields->selected.size() && i < m_fields->originalOpacity.size(); ++i) {
-                if (m_fields->selected[i]) m_fields->selected[i]->setOpacity(m_fields->originalOpacity[i]);
-            }
-        }
         m_fields->previews.clear();
         m_fields->selected.clear();
-        m_fields->originalOpacity.clear();
         m_fields->previewVisible = false;
         if (m_fields->confirmButton) m_fields->confirmButton->setVisible(false);
     }
@@ -207,14 +245,15 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
         }
 
         m_fields->selected = selected;
-        m_fields->originalOpacity.reserve(selected.size());
+
+        // Important: previews are children of the object layer, not the editor UI.
+        // This keeps them in the same coordinate/camera space as the selected objects.
         for (auto object : selected) {
-            if (!object) continue;
+            if (!object || !object->getParent()) continue;
             auto preview = WhiteShapeNode::create(object);
             if (!preview) continue;
-            m_fields->originalOpacity.push_back(object->getOpacity());
-            object->setOpacity(0);
-            m_editorLayer->addChild(preview, 999);
+            auto parent = object->getParent();
+            parent->addChild(preview, 100000);
             m_fields->previews.push_back(preview);
         }
 
@@ -228,15 +267,13 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
     }
 
     void onConfirm(CCObject*) {
-        if (!m_fields->previewVisible || m_fields->selected.empty() || !m_editorLayer) {
+        if (!m_fields->previewVisible || m_fields->previews.empty()) {
             showMessage("White Structure Preview", "Press PREVIEW first.");
             return;
         }
 
-        m_fields->previewVisible = false;
-        m_fields->selected.clear();
-        m_fields->originalOpacity.clear();
-        m_fields->confirmButton->setVisible(false);
-        showMessage("White Structure Preview", "Confirmed: custom pure-white shapes placed in the editor.");
+        // Confirmation only closes the visual preview. It does not modify or duplicate
+        // the original selected Geometry Dash objects.
+        clearPreview();
     }
 };
