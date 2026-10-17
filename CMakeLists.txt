@@ -3,8 +3,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-project(AIStructureDecorator VERSION 0.5.5)
-# Compile only the active implementation; the obsolete prototype is intentionally excluded.
+project(AIStructureDecorator VERSION 0.6.0)
+# Compile only the active implementation.
 set(SOURCES src/main_v04.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
