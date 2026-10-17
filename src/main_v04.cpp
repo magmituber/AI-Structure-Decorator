@@ -256,15 +256,19 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             if (!sourceParent) continue;
             auto preview = WhiteShapeNode::create(object);
             if (!preview) continue;
-            // Attach as a sibling of the selected object. This makes the preview inherit
-            // the same camera, parent transforms, and coordinate space as the real object.
-            preview->setPosition(object->getPosition());
+            // Never attach custom CCDrawNode-based previews to the source parent:
+            // selected GameObjects may live inside a CCSpriteBatchNode, which only accepts
+            // compatible sprites and can crash with SIGSEGV when given a generic CCNode.
+            // Attach to the regular LevelEditorLayer instead and convert the source position
+            // through world space so the overlay stays aligned with the selected object.
+            auto worldPosition = sourceParent->convertToWorldSpace(object->getPosition());
+            preview->setPosition(m_editorLayer->convertToNodeSpace(worldPosition));
             preview->setRotation(object->getRotation());
             preview->setScaleX(object->getScaleX());
             preview->setScaleY(object->getScaleY());
             // Retain before attaching, so parent cleanup cannot invalidate our stored pointer.
             preview->retain();
-            sourceParent->addChild(preview, 100000);
+            m_editorLayer->addChild(preview, 100000);
             m_fields->previews.push_back(preview);
         }
         if (m_fields->previews.empty()) {
