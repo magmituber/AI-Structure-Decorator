@@ -16,6 +16,8 @@ namespace {
     }
 
     bool isSlope(int id) {
+        // Base Geometry Dash slope objects, plus the newer slope variants below.
+        if (id == 6 || id == 7) return true;
         switch (id) {
             case 289: case 291: case 294: case 295: case 296: case 297:
             case 305: case 307: case 349: case 351:
@@ -74,6 +76,7 @@ namespace {
             this->addChild(m_draw);
             ccColor4F white = {1.f, 1.f, 1.f, 1.f};
             ccColor4F transparent = {1.f, 1.f, 1.f, 0.f};
+            constexpr float outlineWidth = 2.5f;
             float halfW = size.width * 0.5f;
             float halfH = size.height * 0.5f;
             CCPoint points[4];
@@ -82,7 +85,7 @@ namespace {
                     points[0] = CCPointMake(-halfW, -halfH);
                     points[1] = CCPointMake(halfW, -halfH);
                     points[2] = CCPointMake(0.f, halfH);
-                    m_draw->drawPolygon(points, 3, white, 0.f, transparent);
+                    m_draw->drawPolygon(points, 3, transparent, outlineWidth, white);
                     break;
                 case Shape::Slope:
                 case Shape::WideSlope:
@@ -92,7 +95,7 @@ namespace {
                     m_draw->drawPolygon(points, 3, white, 0.f, transparent);
                     break;
                 default:
-                    m_draw->drawRect({-halfW, -halfH}, {halfW, halfH}, white, 0.f, transparent);
+                    m_draw->drawRect({-halfW, -halfH}, {halfW, halfH}, transparent, outlineWidth, white);
                     break;
             }
             this->setContentSize(size);
@@ -165,7 +168,6 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
         CCMenuItemSpriteExtra* confirmButton = nullptr;
         std::vector<GameObject*> selected;
         std::vector<WhiteShapeNode*> previews;
-        std::vector<GLubyte> originalOpacity;
         bool previewVisible = false;
     };
 
@@ -197,15 +199,10 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
         return true;
     }
 
-    void clearPreview(bool restoreOriginals = true) {
+    void clearPreview() {
         for (auto* preview : m_fields->previews) if (preview) preview->removeFromParentAndCleanup(true);
-        if (restoreOriginals) {
-            for (size_t i = 0; i < m_fields->selected.size() && i < m_fields->originalOpacity.size(); ++i)
-                if (m_fields->selected[i]) m_fields->selected[i]->setOpacity(m_fields->originalOpacity[i]);
-        }
         m_fields->previews.clear();
         m_fields->selected.clear();
-        m_fields->originalOpacity.clear();
         m_fields->previewVisible = false;
         if (m_fields->confirmButton) m_fields->confirmButton->setVisible(false);
     }
@@ -234,16 +231,15 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             if (!object) continue;
             auto preview = WhiteShapeNode::create(object);
             if (!preview) continue;
-            m_fields->originalOpacity.push_back(object->getOpacity());
-            object->setOpacity(0);
-            // GameObjects may live under transformed/group parents. Convert their position
-            // through world space before placing the preview in the editor layer.
+            // Attach as a sibling of the selected object. This makes the preview inherit
+            // the same camera, parent transforms, and coordinate space as the real object.
             auto sourceParent = object->getParent();
-            if (sourceParent) {
-                auto worldPosition = sourceParent->convertToWorldSpace(object->getPosition());
-                preview->setPosition(m_editorLayer->convertToNodeSpace(worldPosition));
-            }
-            m_editorLayer->addChild(preview, 999);
+            if (!sourceParent) continue;
+            preview->setPosition(object->getPosition());
+            preview->setRotation(object->getRotation());
+            preview->setScaleX(object->getScaleX());
+            preview->setScaleY(object->getScaleY());
+            sourceParent->addChild(preview, 100000);
             m_fields->previews.push_back(preview);
         }
         if (m_fields->previews.empty()) {
