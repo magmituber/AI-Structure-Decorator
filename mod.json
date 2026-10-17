@@ -3,8 +3,8 @@
   "gd": { "android": "2.2081", "win": "2.2081" },
   "id": "magmituber.ai-structure-decorator",
   "name": "White Structure Preview",
-  "version": "v0.3.0",
+  "version": "v0.4.0",
   "developer": "magmituber",
-  "description": "Creates custom pure-white editor-only shapes matching selected blocks, two slope sizes, and spike sizes.",
+  "description": "Creates pure-white editor previews over selected blocks, ramps, and spikes; the buttons can be dragged to a convenient position.",
   "tags": ["editor", "utility", "enhancement"]
 }
