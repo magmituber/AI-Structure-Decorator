@@ -3,8 +3,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-project(AIStructureDecorator VERSION 0.1.0)
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+project(AIStructureDecorator VERSION 0.5.1)
+# Build only the maintained implementation. Avoid compiling the old prototype too.
+set(SOURCES src/main_v04.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 if (NOT DEFINED ENV{GEODE_SDK})

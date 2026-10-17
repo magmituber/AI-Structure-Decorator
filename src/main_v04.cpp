@@ -210,9 +210,18 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
     std::vector<GameObject*> getSelection() {
         std::vector<GameObject*> result;
         if (m_selectedObject) result.push_back(m_selectedObject);
+        // Read the selection array defensively: do not static-cast every entry to
+        // GameObject, because editor selection arrays can briefly contain stale/non-object entries.
         if (m_selectedObjects) {
-            for (auto object : geode::cocos::CCArrayExt<GameObject, false>(m_selectedObjects))
-                if (object && std::find(result.begin(), result.end(), object) == result.end()) result.push_back(object);
+            auto count = m_selectedObjects->count();
+            for (unsigned int i = 0; i < count; ++i) {
+                auto raw = m_selectedObjects->objectAtIndex(i);
+                auto object = typeinfo_cast<GameObject*>(raw);
+                if (object && object->getParent() &&
+                    std::find(result.begin(), result.end(), object) == result.end()) {
+                    result.push_back(object);
+                }
+            }
         }
         return result;
     }
@@ -227,13 +236,14 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
         }
         m_fields->selected = selected;
         for (auto object : selected) {
+            // Validate the source and parent before creating any preview node.
             if (!object) continue;
+            auto sourceParent = object->getParent();
+            if (!sourceParent) continue;
             auto preview = WhiteShapeNode::create(object);
             if (!preview) continue;
             // Attach as a sibling of the selected object. This makes the preview inherit
             // the same camera, parent transforms, and coordinate space as the real object.
-            auto sourceParent = object->getParent();
-            if (!sourceParent) continue;
             preview->setPosition(object->getPosition());
             preview->setRotation(object->getRotation());
             preview->setScaleX(object->getScaleX());

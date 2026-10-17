@@ -1,3 +1,8 @@
+v0.5.1
+- Harden selection handling before creating previews.
+- Build only the maintained preview implementation.
+- Fix crash-prone selection-array access.
+
 # Changelog
 
 ## v0.1.0
