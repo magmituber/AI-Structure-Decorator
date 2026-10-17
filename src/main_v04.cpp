@@ -236,6 +236,13 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             if (!preview) continue;
             m_fields->originalOpacity.push_back(object->getOpacity());
             object->setOpacity(0);
+            // GameObjects may live under transformed/group parents. Convert their position
+            // through world space before placing the preview in the editor layer.
+            auto sourceParent = object->getParent();
+            if (sourceParent) {
+                auto worldPosition = sourceParent->convertToWorldSpace(object->getPosition());
+                preview->setPosition(m_editorLayer->convertToNodeSpace(worldPosition));
+            }
             m_editorLayer->addChild(preview, 999);
             m_fields->previews.push_back(preview);
         }
