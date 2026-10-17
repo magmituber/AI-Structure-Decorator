@@ -44,8 +44,10 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
         if (!preview || !confirm) return true;
 
         auto size = CCDirector::sharedDirector()->getWinSize();
-        preview->setPosition({size.width - 55.f, 68.f});
-        confirm->setPosition({size.width - 55.f, 38.f});
+        float centerX = size.width * 0.5f;
+        float topY = size.height - 30.f;
+        preview->setPosition({centerX - 48.f, topY});
+        confirm->setPosition({centerX + 48.f, topY});
         preview->setID("white-preview-button"_spr);
         confirm->setID("white-confirm-button"_spr);
         confirm->setVisible(false);
@@ -104,7 +106,7 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
             if (size.width < 1.f) size.width = 30.f;
             if (size.height < 1.f) size.height = 30.f;
 
-            auto preview = CCLayerColor::create({255, 255, 255, 180}, size.width, size.height);
+            auto preview = CCLayerColor::create({255, 255, 255, 220}, size.width, size.height);
             if (!preview) continue;
             preview->setAnchorPoint({0.5f, 0.5f});
             preview->setPosition(object->getPosition());
@@ -141,7 +143,8 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
             object->setRotation(source->getRotation());
             object->setScaleX(source->getScaleX());
             object->setScaleY(source->getScaleY());
-            object->setColor({255, 255, 255});
+            object->setObjectColor({255, 255, 255});
+            object->setOpacity(255);
             ++created;
         }
 
