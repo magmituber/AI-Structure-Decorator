@@ -9,6 +9,110 @@ namespace {
     void showMessage(char const* title, char const* message) {
         FLAlertLayer::create(title, message, "OK")->show();
     }
+
+    bool isSpike(int id) {
+        return id == 8 || id == 39 || id == 103;
+    }
+
+    bool isSlope(int id) {
+        switch (id) {
+            case 289: case 291: case 294: case 295: case 296: case 297:
+            case 305: case 307: case 349: case 351:
+            case 363: case 364: case 366: case 367:
+            case 371: case 372: case 373: case 374:
+            case 513: case 514: case 522: case 523: case 531: case 532:
+            case 603: case 604: case 612: case 613: case 621: case 622:
+            case 630: case 631: case 639: case 640: case 665: case 666:
+            case 681: case 682: case 683: case 684: case 685: case 686:
+            case 687: case 688: case 689: case 690: case 691: case 692:
+            case 693: case 694: case 695: case 696: case 697: case 698:
+            case 699: case 700: case 701: case 702: case 703: case 704:
+            case 705: case 706: case 707: case 708: case 713: case 714:
+            case 715: case 716: case 730: case 731: case 732: case 733:
+            case 762: case 763: case 771: case 772: case 826: case 827:
+            case 828: case 829: case 960: case 961: case 969: case 970:
+            case 1014: case 1015: case 1033: case 1034: case 1037: case 1038:
+            case 1041: case 1042: case 1043: case 1044:
+            case 1091: case 1092: case 1107: case 1108:
+            case 1187: case 1188: case 1198: case 1199:
+            case 1206: case 1207: case 1224: case 1225:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    enum class Shape { Block, Slope, WideSlope, Spike };
+
+    Shape getShape(GameObject* object) {
+        auto id = object ? object->m_objectID : 1;
+        if (isSpike(id)) return Shape::Spike;
+        if (isSlope(id)) {
+            auto size = object->getContentSize();
+            return size.width >= size.height * 1.65f ? Shape::WideSlope : Shape::Slope;
+        }
+        return Shape::Block;
+    }
+
+    class WhiteShapeNode : public CCNode {
+        CCDrawNode* m_draw = nullptr;
+
+    public:
+        static WhiteShapeNode* create(GameObject* source) {
+            auto ret = new WhiteShapeNode();
+            if (ret && ret->initWithSource(source)) {
+                ret->autorelease();
+                return ret;
+            }
+            CC_SAFE_DELETE(ret);
+            return nullptr;
+        }
+
+        bool initWithSource(GameObject* source) {
+            if (!CCNode::init() || !source) return false;
+
+            auto size = source->getContentSize();
+            if (size.width < 1.f) size.width = 30.f;
+            if (size.height < 1.f) size.height = 30.f;
+
+            m_draw = CCDrawNode::create();
+            if (!m_draw) return false;
+            this->addChild(m_draw);
+
+            ccColor4F white = {1.f, 1.f, 1.f, 1.f};
+            ccColor4F transparent = {1.f, 1.f, 1.f, 0.f};
+            float halfW = size.width * 0.5f;
+            float halfH = size.height * 0.5f;
+            CCPoint points[4];
+
+            switch (getShape(source)) {
+                case Shape::Spike:
+                    points[0] = {-halfW, -halfH};
+                    points[1] = { halfW, -halfH};
+                    points[2] = {0.f, halfH};
+                    m_draw->drawPolygon(points, 3, white, 0.f, transparent);
+                    break;
+                case Shape::Slope:
+                case Shape::WideSlope:
+                    points[0] = {-halfW, -halfH};
+                    points[1] = { halfW, -halfH};
+                    points[2] = { halfW, halfH};
+                    m_draw->drawPolygon(points, 3, white, 0.f, transparent);
+                    break;
+                default:
+                    m_draw->drawRect({-halfW, -halfH}, {halfW, halfH}, white, 0.f, transparent);
+                    break;
+            }
+
+            this->setContentSize(size);
+            this->setAnchorPoint({0.5f, 0.5f});
+            this->setPosition(source->getPosition());
+            this->setRotation(source->getRotation());
+            this->setScaleX(source->getScaleX());
+            this->setScaleY(source->getScaleY());
+            return true;
+        }
+    };
 }
 
 class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
@@ -17,7 +121,8 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
         CCMenuItemSpriteExtra* previewButton = nullptr;
         CCMenuItemSpriteExtra* confirmButton = nullptr;
         std::vector<GameObject*> selected;
-        std::vector<CCLayerColor*> previews;
+        std::vector<WhiteShapeNode*> previews;
+        std::vector<GLubyte> originalOpacity;
         bool previewVisible = false;
     };
 
@@ -55,19 +160,24 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
         menu->addChild(preview);
         menu->addChild(confirm);
         this->addChild(menu, 1000);
-
         m_fields->menu = menu;
         m_fields->previewButton = preview;
         m_fields->confirmButton = confirm;
         return true;
     }
 
-    void clearPreview() {
+    void clearPreview(bool restoreOriginals = true) {
         for (auto* preview : m_fields->previews) {
             if (preview) preview->removeFromParentAndCleanup(true);
         }
+        if (restoreOriginals) {
+            for (size_t i = 0; i < m_fields->selected.size() && i < m_fields->originalOpacity.size(); ++i) {
+                if (m_fields->selected[i]) m_fields->selected[i]->setOpacity(m_fields->originalOpacity[i]);
+            }
+        }
         m_fields->previews.clear();
         m_fields->selected.clear();
+        m_fields->originalOpacity.clear();
         m_fields->previewVisible = false;
         if (m_fields->confirmButton) m_fields->confirmButton->setVisible(false);
     }
@@ -77,9 +187,7 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
         if (m_selectedObject) result.push_back(m_selectedObject);
         if (m_selectedObjects) {
             for (auto object : geode::cocos::CCArrayExt<GameObject, false>(m_selectedObjects)) {
-                if (object && std::find(result.begin(), result.end(), object) == result.end()) {
-                    result.push_back(object);
-                }
+                if (object && std::find(result.begin(), result.end(), object) == result.end()) result.push_back(object);
             }
         }
         return result;
@@ -94,25 +202,18 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
 
         auto selected = getSelection();
         if (selected.empty()) {
-            showMessage("White Structure Preview", "Select one or more blocks, ramps or other objects first.");
+            showMessage("White Structure Preview", "Select one or more blocks, ramps or spikes first.");
             return;
         }
 
         m_fields->selected = selected;
-
+        m_fields->originalOpacity.reserve(selected.size());
         for (auto object : selected) {
             if (!object) continue;
-            auto size = object->getContentSize();
-            if (size.width < 1.f) size.width = 30.f;
-            if (size.height < 1.f) size.height = 30.f;
-
-            auto preview = CCLayerColor::create({255, 255, 255, 220}, size.width, size.height);
+            auto preview = WhiteShapeNode::create(object);
             if (!preview) continue;
-            preview->setAnchorPoint({0.5f, 0.5f});
-            preview->setPosition(object->getPosition());
-            preview->setRotation(object->getRotation());
-            preview->setScaleX(object->getScaleX());
-            preview->setScaleY(object->getScaleY());
+            m_fields->originalOpacity.push_back(object->getOpacity());
+            object->setOpacity(0);
             m_editorLayer->addChild(preview, 999);
             m_fields->previews.push_back(preview);
         }
@@ -122,7 +223,6 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
             showMessage("White Structure Preview", "The selected objects could not be previewed.");
             return;
         }
-
         m_fields->previewVisible = true;
         m_fields->confirmButton->setVisible(true);
     }
@@ -133,28 +233,12 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
             return;
         }
 
-        int created = 0;
-        for (auto source : m_fields->selected) {
-            if (!source) continue;
-
-            auto object = this->createObject(1, source->getPosition());
-            if (!object) continue;
-
-            object->setRotation(source->getRotation());
-            object->setScaleX(source->getScaleX());
-            object->setScaleY(source->getScaleY());
-            object->setObjectColor({255, 255, 255});
-            object->setOpacity(255);
-            ++created;
-        }
-
-        clearPreview();
-        if (created > 0) {
-            this->updateButtons();
-            this->updateObjectInfoLabel();
-            showMessage("White Structure Preview", "Preview confirmed: white blocks were placed in the editor.");
-        } else {
-            showMessage("White Structure Preview", "No blocks could be created.");
-        }
+        // The preview nodes themselves become the confirmed editor-only shapes.
+        // They are custom white geometry, not duplicated Geometry Dash objects.
+        m_fields->previewVisible = false;
+        m_fields->selected.clear();
+        m_fields->originalOpacity.clear();
+        m_fields->confirmButton->setVisible(false);
+        showMessage("White Structure Preview", "Confirmed: custom pure-white shapes placed in the editor.");
     }
 };
