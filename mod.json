@@ -3,8 +3,8 @@
   "gd": { "android": "2.2081", "win": "2.2081" },
   "id": "magmituber.ai-structure-decorator",
   "name": "White Structure Preview",
-  "version": "v0.5.5",
+  "version": "v0.6.0",
   "developer": "magmituber",
-  "description": "Uses real Geometry Dash block, slope, and spike GameObjects as temporary white previews in the world layer.",
+  "description": "Creates temporary white block, slope, and spike copies that match the selected objects and follow the editor camera.",
   "tags": ["editor", "utility", "enhancement"]
 }
