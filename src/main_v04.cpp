@@ -131,14 +131,26 @@ namespace {
                 }
             }
             if (!m_pressed) return false;
-            m_startTouch = point;
+            auto parent = this->getParent();
+            if (!parent) {
+                m_pressed = nullptr;
+                return false;
+            }
+            // Track touch in the stable parent coordinate space to avoid drag drift.
+            m_startTouch = parent->convertToNodeSpace(touch->getLocation());
             m_startPosition = this->getPosition();
             m_dragging = false;
             return true;
         }
         void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
             if (!m_pressed) return;
-            auto point = this->convertTouchToNodeSpace(touch);
+            auto parent = this->getParent();
+            if (!parent) {
+                m_pressed = nullptr;
+                m_dragging = false;
+                return;
+            }
+            auto point = parent->convertToNodeSpace(touch->getLocation());
             auto delta = point - m_startTouch;
             if (!m_dragging && (std::fabs(delta.x) > 8.f || std::fabs(delta.y) > 8.f)) m_dragging = true;
             if (m_dragging) {
@@ -166,7 +178,6 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
         DraggableMenu* menu = nullptr;
         CCMenuItemSpriteExtra* previewButton = nullptr;
         CCMenuItemSpriteExtra* confirmButton = nullptr;
-        std::vector<GameObject*> selected;
         std::vector<WhiteShapeNode*> previews;
         bool previewVisible = false;
     };
@@ -200,16 +211,20 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
     }
 
     void clearPreview() {
-        for (auto* preview : m_fields->previews) if (preview) preview->removeFromParentAndCleanup(true);
+        // Keep owned references so editor/parent cleanup cannot leave dangling pointers.
+        for (auto* preview : m_fields->previews) {
+            if (!preview) continue;
+            if (preview->getParent()) preview->removeFromParentAndCleanup(true);
+            preview->release();
+        }
         m_fields->previews.clear();
-        m_fields->selected.clear();
         m_fields->previewVisible = false;
         if (m_fields->confirmButton) m_fields->confirmButton->setVisible(false);
     }
 
     std::vector<GameObject*> getSelection() {
         std::vector<GameObject*> result;
-        if (m_selectedObject) result.push_back(m_selectedObject);
+        if (m_selectedObject && m_selectedObject->getParent()) result.push_back(m_selectedObject);
         // Read the selection array defensively: do not static-cast every entry to
         // GameObject, because editor selection arrays can briefly contain stale/non-object entries.
         if (m_selectedObjects) {
@@ -234,7 +249,6 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             showMessage("White Structure Preview", "Select one or more blocks, ramps or spikes first.");
             return;
         }
-        m_fields->selected = selected;
         for (auto object : selected) {
             // Validate the source and parent before creating any preview node.
             if (!object) continue;
@@ -248,6 +262,8 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             preview->setRotation(object->getRotation());
             preview->setScaleX(object->getScaleX());
             preview->setScaleY(object->getScaleY());
+            // Retain before attaching, so parent cleanup cannot invalidate our stored pointer.
+            preview->retain();
             sourceParent->addChild(preview, 100000);
             m_fields->previews.push_back(preview);
         }
@@ -257,11 +273,11 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             return;
         }
         m_fields->previewVisible = true;
-        m_fields->confirmButton->setVisible(true);
+        if (m_fields->confirmButton) m_fields->confirmButton->setVisible(true);
     }
 
     void onConfirm(CCObject*) {
-        if (!m_fields->previewVisible || m_fields->selected.empty() || !m_editorLayer) return;
+        if (!m_fields->previewVisible || m_fields->previews.empty() || !m_editorLayer) return;
         clearPreview();
     }
 };

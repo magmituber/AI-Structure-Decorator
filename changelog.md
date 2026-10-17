@@ -1,3 +1,9 @@
+v0.5.2
+- Prevent stale preview pointers after editor/parent cleanup by retaining preview nodes safely.
+- Fix button dragging coordinate drift.
+- Reject selected objects without a parent and guard confirmation-button access.
+- Keep only the active implementation in the build and align project documentation.
+
 v0.5.1
 - Harden selection handling before creating previews.
 - Build only the maintained preview implementation.
