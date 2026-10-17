@@ -54,8 +54,8 @@ namespace {
         }
     }
 
-    // Real Geometry Dash object IDs used as the visual templates.
-    // 1 = block, 6 = slope, 7 = wide slope, 8 = spike.
+    // Native Geometry Dash templates used only for the temporary white copy.
+    // 1 = block, 6/7 = slopes, 8 = spike.
     int getPreviewTemplateID(GameObject* object) {
         if (!object) return 1;
         auto id = object->m_objectID;
@@ -92,10 +92,7 @@ namespace {
             }
             if (!m_pressed) return false;
             auto parent = this->getParent();
-            if (!parent) {
-                m_pressed = nullptr;
-                return false;
-            }
+            if (!parent) { m_pressed = nullptr; return false; }
             m_startTouch = parent->convertToNodeSpace(touch->getLocation());
             m_startPosition = this->getPosition();
             m_dragging = false;
@@ -105,19 +102,15 @@ namespace {
         void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
             if (!m_pressed) return;
             auto parent = this->getParent();
-            if (!parent) {
-                m_pressed = nullptr;
-                m_dragging = false;
-                return;
-            }
+            if (!parent) { m_pressed = nullptr; m_dragging = false; return; }
             auto point = parent->convertToNodeSpace(touch->getLocation());
             auto delta = point - m_startTouch;
             if (!m_dragging && (std::fabs(delta.x) > 8.f || std::fabs(delta.y) > 8.f)) m_dragging = true;
             if (m_dragging) {
                 auto win = CCDirector::sharedDirector()->getWinSize();
                 auto pos = m_startPosition + delta;
-                pos.x = std::max(55.f, std::min(pos.x, win.width - 55.f));
-                pos.y = std::max(25.f, std::min(pos.y, win.height - 25.f));
+                pos.x = std::max(65.f, std::min(pos.x, win.width - 65.f));
+                pos.y = std::max(35.f, std::min(pos.y, win.height - 35.f));
                 this->setPosition(pos);
             }
         }
@@ -135,7 +128,7 @@ namespace {
     };
 }
 
-class $modify(WhiteStructurePreviewEditorUI_v05, EditorUI) {
+class $modify(WhiteStructurePreviewEditorUI_v06, EditorUI) {
     struct Fields {
         DraggableMenu* menu = nullptr;
         CCMenuItemSpriteExtra* previewButton = nullptr;
@@ -149,31 +142,42 @@ class $modify(WhiteStructurePreviewEditorUI_v05, EditorUI) {
 
         auto menu = DraggableMenu::create();
         if (!menu) return true;
-        menu->setID("white-preview-menu-v05"_spr);
+        menu->setID("white-preview-menu-v06"_spr);
 
+        // Cleaner compact editor UI: title + two separated actions.
+        auto title = CCLabelBMFont::create("WHITE PREVIEW", "bigFont.fnt");
         auto previewLabel = CCLabelBMFont::create("PREVIEW", "bigFont.fnt");
-        auto confirmLabel = CCLabelBMFont::create("CONFIRM", "bigFont.fnt");
-        if (!previewLabel || !confirmLabel) return true;
-        previewLabel->setScale(0.35f);
-        confirmLabel->setScale(0.35f);
+        auto confirmLabel = CCLabelBMFont::create("CLEAR", "bigFont.fnt");
+        if (!title || !previewLabel || !confirmLabel) return true;
+
+        title->setScale(0.30f);
+        title->setColor({255, 255, 255});
+        title->setOpacity(230);
+        title->setPosition({0.f, 34.f});
+
+        previewLabel->setScale(0.36f);
+        previewLabel->setColor({255, 255, 255});
+        confirmLabel->setScale(0.36f);
+        confirmLabel->setColor({255, 255, 255});
 
         auto preview = CCMenuItemSpriteExtra::create(
-            previewLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v05::onPreview)
+            previewLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v06::onPreview)
         );
         auto confirm = CCMenuItemSpriteExtra::create(
-            confirmLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v05::onConfirm)
+            confirmLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v06::onConfirm)
         );
         if (!preview || !confirm) return true;
 
         auto size = CCDirector::sharedDirector()->getWinSize();
-        menu->setPosition({size.width * 0.5f, size.height - 72.f});
-        preview->setPosition({-48.f, 0.f});
-        confirm->setPosition({48.f, 0.f});
-        preview->setID("white-preview-button-v05"_spr);
-        confirm->setID("white-confirm-button-v05"_spr);
+        menu->setPosition({size.width * 0.5f, size.height - 78.f});
+        preview->setPosition({-52.f, 0.f});
+        confirm->setPosition({52.f, 0.f});
+        preview->setID("white-preview-button-v06"_spr);
+        confirm->setID("white-clear-button-v06"_spr);
 
-        menu->addChild(preview);
-        menu->addChild(confirm);
+        menu->addChild(title, 2);
+        menu->addChild(preview, 1);
+        menu->addChild(confirm, 1);
         confirm->setVisible(false);
         this->addChild(menu, 1001);
 
@@ -216,7 +220,7 @@ class $modify(WhiteStructurePreviewEditorUI_v05, EditorUI) {
 
         auto selected = getSelection();
         if (selected.empty()) {
-            showMessage("White Structure Preview", "Select one or more blocks, ramps or spikes first.");
+            showMessage("White Structure Preview", "Select blocks, ramps or spikes first.");
             return;
         }
 
@@ -226,30 +230,43 @@ class $modify(WhiteStructurePreviewEditorUI_v05, EditorUI) {
         for (auto* source : selected) {
             if (!source || !source->getParent()) continue;
 
-            // Create a REAL Geometry Dash GameObject from one of GD's native
-            // block/slope/spike templates. This means the preview lives in the
-            // normal world object layer and automatically follows camera movement
-            // and zoom, unlike the old CCDrawNode implementation.
+            // Make a separate native GD GameObject for every selected object.
+            // The original object is never recolored or modified.
             auto preview = GameObject::createWithKey(getPreviewTemplateID(source));
             if (!preview) continue;
 
-            // Give the temporary node its own Geode identifier. It is not inserted
-            // into the level's saved object collection, so it cannot be confused
-            // with or saved as the original level object.
             preview->setID("white-structure-preview-object"_spr);
             preview->setTag(-100500 - static_cast<int>(previewIndex++));
             preview->setColor({255, 255, 255});
-            preview->setOpacity(190);
+            preview->setOpacity(205);
 
+            // Preserve the source orientation.
+            preview->setRotation(source->getRotation());
+            preview->setFlipX(source->isFlipX());
+            preview->setFlipY(source->isFlipY());
+
+            // Fit the white template to the EXACT dimensions of the selected
+            // object. This is important when the user selected a stretched block,
+            // a wide/tall ramp, or a scaled spike.
+            auto sourceSize = source->getContentSize();
+            auto previewSize = preview->getContentSize();
+            float sx = source->getScaleX();
+            float sy = source->getScaleY();
+            if (sourceSize.width > 0.01f && previewSize.width > 0.01f)
+                sx *= sourceSize.width / previewSize.width;
+            if (sourceSize.height > 0.01f && previewSize.height > 0.01f)
+                sy *= sourceSize.height / previewSize.height;
+            preview->setScaleX(sx);
+            preview->setScaleY(sy);
+
+            // Convert through world space so the temporary copy stays exactly
+            // over the source even when the source is inside another node.
             auto sourceParent = source->getParent();
             auto worldPosition = sourceParent->convertToWorldSpace(source->getPosition());
             preview->setPosition(objectLayer->convertToNodeSpace(worldPosition));
-            preview->setRotation(source->getRotation());
-            preview->setScaleX(source->getScaleX());
-            preview->setScaleY(source->getScaleY());
 
-            // IMPORTANT: add directly to the world object layer, not EditorUI.
-            // This is what makes it camera-aware and prevents the old screen-fixed bug.
+            // Temporary only: it is a child of the world object layer and is not
+            // added to the editor's saved-object collection.
             objectLayer->addChild(preview, 100000);
             m_fields->previews.push_back(preview);
         }
