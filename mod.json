@@ -3,8 +3,8 @@
   "gd": { "android": "2.2081", "win": "2.2081" },
   "id": "magmituber.ai-structure-decorator",
   "name": "White Structure Preview",
-  "version": "v0.4.0",
+  "version": "v0.5.0",
   "developer": "magmituber",
-  "description": "Creates pure-white editor previews over selected blocks, ramps, and spikes; the buttons can be dragged to a convenient position.",
+  "description": "Shows white outlines that follow selected blocks, ramps, and spikes in the editor; the buttons can be dragged.",
   "tags": ["editor", "utility", "enhancement"]
 }
