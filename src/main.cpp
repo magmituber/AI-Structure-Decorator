@@ -87,16 +87,16 @@ namespace {
 
             switch (getShape(source)) {
                 case Shape::Spike:
-                    points[0] = {-halfW, -halfH};
-                    points[1] = { halfW, -halfH};
-                    points[2] = {0.f, halfH};
+                    points[0] = CCPointMake(-halfW, -halfH);
+                    points[1] = CCPointMake( halfW, -halfH);
+                    points[2] = CCPointMake(0.f, halfH);
                     m_draw->drawPolygon(points, 3, white, 0.f, transparent);
                     break;
                 case Shape::Slope:
                 case Shape::WideSlope:
-                    points[0] = {-halfW, -halfH};
-                    points[1] = { halfW, -halfH};
-                    points[2] = { halfW, halfH};
+                    points[0] = CCPointMake(-halfW, -halfH);
+                    points[1] = CCPointMake( halfW, -halfH);
+                    points[2] = CCPointMake( halfW, halfH);
                     m_draw->drawPolygon(points, 3, white, 0.f, transparent);
                     break;
                 default:
@@ -233,8 +233,6 @@ class $modify(WhiteStructurePreviewEditorUI, EditorUI) {
             return;
         }
 
-        // The preview nodes themselves become the confirmed editor-only shapes.
-        // They are custom white geometry, not duplicated Geometry Dash objects.
         m_fields->previewVisible = false;
         m_fields->selected.clear();
         m_fields->originalOpacity.clear();
