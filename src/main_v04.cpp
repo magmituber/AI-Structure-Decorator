@@ -92,7 +92,7 @@ namespace {
                     points[0] = CCPointMake(-halfW, -halfH);
                     points[1] = CCPointMake(halfW, -halfH);
                     points[2] = CCPointMake(halfW, halfH);
-                    m_draw->drawPolygon(points, 3, white, 0.f, transparent);
+                    m_draw->drawPolygon(points, 3, transparent, outlineWidth, white);
                     break;
                 default:
                     m_draw->drawRect({-halfW, -halfH}, {halfW, halfH}, transparent, outlineWidth, white);
@@ -226,7 +226,6 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
             return;
         }
         m_fields->selected = selected;
-        m_fields->originalOpacity.reserve(selected.size());
         for (auto object : selected) {
             if (!object) continue;
             auto preview = WhiteShapeNode::create(object);
@@ -253,6 +252,6 @@ class $modify(WhiteStructurePreviewEditorUI_v04, EditorUI) {
 
     void onConfirm(CCObject*) {
         if (!m_fields->previewVisible || m_fields->selected.empty() || !m_editorLayer) return;
-        clearPreview(true);
+        clearPreview();
     }
 };
