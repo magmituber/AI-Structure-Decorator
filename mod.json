@@ -2,9 +2,9 @@
   "geode": "5.11.2",
   "gd": { "android": "2.2081", "win": "2.2081" },
   "id": "magmituber.ai-structure-decorator",
-  "name": "White Structure Preview",
-  "version": "v0.6.0",
+  "name": "AI Structure Decorator",
+  "version": "v0.7.0",
   "developer": "magmituber",
-  "description": "Creates temporary white block, slope, and spike copies that match the selected objects and follow the editor camera.",
-  "tags": ["editor", "utility", "enhancement"]
+  "description": "Structure decoration foundation using four native white Geometry Dash pieces: square, spike, short ramp and long ramp. Previews are temporary and never modify the original objects.",
+  "tags": ["editor", "utility", "enhancement", "decoration"]
 }
