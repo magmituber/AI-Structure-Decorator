@@ -3,9 +3,11 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-project(AIStructureDecorator VERSION 0.6.0)
-# Compile only the active implementation.
-set(SOURCES src/main_v04.cpp)
+project(AIStructureDecorator VERSION 0.7.0)
+
+# Active implementation. The previous v0.6 source is kept in the repository
+# for reference, but only v0.7 is compiled.
+set(SOURCES src/main_v07.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 if (NOT DEFINED ENV{GEODE_SDK})
