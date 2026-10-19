@@ -20,8 +20,7 @@ jobs:
         uses: geode-sdk/build-geode-mod@main
         with:
           target: Android64
-          sdk: latest
-          bindings-ref: a1276a6291865301664282fa0f8b825c3fae6b81
+          sdk: given
           build-config: Release
       - name: Upload compiled mod
         uses: actions/upload-artifact@v4
