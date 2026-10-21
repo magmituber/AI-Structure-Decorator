@@ -3,8 +3,8 @@
   "gd": { "android": "2.2081", "win": "2.2081" },
   "id": "magmituber.ai-structure-decorator",
   "name": "AI Structure Decorator",
-  "version": "v0.7.0",
+  "version": "v0.8.0",
   "developer": "magmituber",
-  "description": "Structure decoration foundation using four native white Geometry Dash pieces: square, spike, short ramp and long ramp. Previews are temporary and never modify the original objects.",
+  "description": "Editor utility that duplicates native Geometry Dash pieces as uniquely identified white selection objects: bloque de seleccion, pinchos de seleccion, rampa corta de seleccion and rampa de seleccion.",
   "tags": ["editor", "utility", "enhancement", "decoration"]
 }
