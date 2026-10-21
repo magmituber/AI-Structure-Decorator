@@ -7,10 +7,13 @@
 using namespace geode::prelude;
 
 namespace {
-    constexpr int kWhiteBlock = 1;
-    constexpr int kWhiteShortSlope = 6;
-    constexpr int kWhiteLongSlope = 7;
-    constexpr int kWhiteSpike = 8;
+    // Native Geometry Dash object IDs used as the four white selection pieces.
+    constexpr int kSelectionBlock = 1;
+    constexpr int kSelectionSpike = 8;
+    constexpr int kSelectionShortRamp = 6;
+    constexpr int kSelectionLongRamp = 7;
+
+    constexpr int kSelectionTagBase = -2081000;
 
     void showMessage(char const* title, char const* message) {
         FLAlertLayer::create(title, message, "OK")->show();
@@ -32,26 +35,19 @@ namespace {
             case 371: case 372: case 373: case 374:
             case 473: case 474: case 475: case 483: case 484: case 492: case 493:
             case 513: case 514: case 522: case 523: case 531: case 532:
-            case 603: case 604: case 612: case 613: case 621: case 622:
-            case 630: case 631: case 639: case 640: case 651: case 652:
-            case 665: case 666:
-            case 681: case 682: case 683: case 684: case 685: case 686:
-            case 687: case 688: case 689: case 690: case 691: case 692:
-            case 693: case 694: case 695: case 696: case 697: case 698:
-            case 699: case 700: case 701: case 702: case 703: case 704:
-            case 705: case 706: case 707: case 708: case 709: case 710:
-            case 711: case 712: case 713: case 714: case 715: case 716:
-            case 726: case 727: case 728: case 729: case 730: case 731:
-            case 732: case 733: case 762: case 763: case 771: case 772:
-            case 826: case 827: case 828: case 829:
-            case 886: case 887: case 960: case 961: case 969: case 970:
-            case 1014: case 1015: case 1033: case 1034: case 1037: case 1038:
-            case 1041: case 1042: case 1043: case 1044:
-            case 1091: case 1092: case 1107: case 1108:
-            case 1187: case 1188: case 1198: case 1199:
-            case 1206: case 1207: case 1224: case 1225:
-            case 1338: case 1339:
-            case 1743: case 1744: case 1745: case 1746: case 1747:
+            case 603: case 604: case 612: case 613: case 621: case 622: case 630: case 631:
+            case 639: case 640: case 651: case 652: case 665: case 666:
+            case 681: case 682: case 683: case 684: case 685: case 686: case 687: case 688:
+            case 689: case 690: case 691: case 692: case 693: case 694: case 695: case 696:
+            case 697: case 698: case 699: case 700: case 701: case 702: case 703: case 704:
+            case 705: case 706: case 707: case 708: case 709: case 710: case 711: case 712:
+            case 713: case 714: case 715: case 716: case 726: case 727: case 728: case 729:
+            case 730: case 731: case 732: case 733: case 762: case 763: case 771: case 772:
+            case 826: case 827: case 828: case 829: case 886: case 887: case 960: case 961:
+            case 969: case 970: case 1014: case 1015: case 1033: case 1034: case 1037: case 1038:
+            case 1041: case 1042: case 1043: case 1044: case 1091: case 1092: case 1107: case 1108:
+            case 1187: case 1188: case 1198: case 1199: case 1206: case 1207: case 1224: case 1225:
+            case 1338: case 1339: case 1743: case 1744: case 1745: case 1746: case 1747:
             case 1748: case 1749: case 1750:
                 return true;
             default:
@@ -59,18 +55,23 @@ namespace {
         }
     }
 
-    // The four white building pieces are real Geometry Dash objects.
-    // Nothing is drawn manually: the mod creates native GD GameObjects and
-    // recolors them white. 1 = square, 8 = spike, 6 = short ramp, 7 = long ramp.
-    int getWhiteTemplateID(GameObject* object) {
-        if (!object) return kWhiteBlock;
-        const auto id = object->m_objectID;
-        if (isSpike(id)) return kWhiteSpike;
-        if (isSlope(id)) {
-            const auto size = object->getContentSize();
-            return size.width >= size.height * 1.65f ? kWhiteLongSlope : kWhiteShortSlope;
+    int getSelectionTemplateID(GameObject* object) {
+        if (!object) return kSelectionBlock;
+        if (isSpike(object->m_objectID)) return kSelectionSpike;
+        if (isSlope(object->m_objectID)) {
+            auto size = object->getContentSize();
+            return size.width >= size.height * 1.65f ? kSelectionLongRamp : kSelectionShortRamp;
         }
-        return kWhiteBlock;
+        return kSelectionBlock;
+    }
+
+    char const* getSelectionName(int id) {
+        switch (id) {
+            case kSelectionSpike: return "pinchos de seleccion";
+            case kSelectionShortRamp: return "rampa corta de seleccion";
+            case kSelectionLongRamp: return "rampa de seleccion";
+            default: return "bloque de seleccion";
+        }
     }
 
     class DraggableMenu : public CCMenu {
@@ -93,7 +94,6 @@ namespace {
         bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
             auto point = this->convertTouchToNodeSpace(touch);
             m_pressed = nullptr;
-
             for (auto child : CCArrayExt<CCNode*, false>(this->getChildren())) {
                 auto item = typeinfo_cast<CCMenuItemSpriteExtra*>(child);
                 if (item && item->isVisible() && item->isEnabled() && item->boundingBox().containsPoint(point)) {
@@ -101,14 +101,9 @@ namespace {
                     break;
                 }
             }
-
             if (!m_pressed) return false;
             auto parent = this->getParent();
-            if (!parent) {
-                m_pressed = nullptr;
-                return false;
-            }
-
+            if (!parent) return false;
             m_startTouch = parent->convertToNodeSpace(touch->getLocation());
             m_startPosition = this->getPosition();
             m_dragging = false;
@@ -118,18 +113,9 @@ namespace {
         void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
             if (!m_pressed) return;
             auto parent = this->getParent();
-            if (!parent) {
-                m_pressed = nullptr;
-                m_dragging = false;
-                return;
-            }
-
-            auto point = parent->convertToNodeSpace(touch->getLocation());
-            auto delta = point - m_startTouch;
-            if (!m_dragging && (std::fabs(delta.x) > 8.f || std::fabs(delta.y) > 8.f)) {
-                m_dragging = true;
-            }
-
+            if (!parent) return;
+            auto delta = parent->convertToNodeSpace(touch->getLocation()) - m_startTouch;
+            if (!m_dragging && (std::fabs(delta.x) > 8.f || std::fabs(delta.y) > 8.f)) m_dragging = true;
             if (m_dragging) {
                 auto win = CCDirector::sharedDirector()->getWinSize();
                 auto pos = m_startPosition + delta;
@@ -152,13 +138,12 @@ namespace {
     };
 }
 
-class $modify(WhiteStructurePreviewEditorUI_v07, EditorUI) {
+class $modify(WhiteSelectionDecoratorEditorUI, EditorUI) {
     struct Fields {
         DraggableMenu* menu = nullptr;
-        CCMenuItemSpriteExtra* previewButton = nullptr;
+        CCMenuItemSpriteExtra* applyButton = nullptr;
         CCMenuItemSpriteExtra* clearButton = nullptr;
-        std::vector<GameObject*> previews;
-        bool previewVisible = false;
+        std::vector<GameObject*> generated;
     };
 
     bool init(LevelEditorLayer* editorLayer) {
@@ -166,147 +151,122 @@ class $modify(WhiteStructurePreviewEditorUI_v07, EditorUI) {
 
         auto menu = DraggableMenu::create();
         if (!menu) return true;
-        menu->setID("white-structure-preview-menu-v07"_spr);
+        menu->setID("ai-structure-selection-menu"_spr);
 
-        auto title = CCLabelBMFont::create("WHITE DECORATOR", "bigFont.fnt");
-        auto previewLabel = CCLabelBMFont::create("WHITE", "bigFont.fnt");
+        auto title = CCLabelBMFont::create("AI DECORATOR", "bigFont.fnt");
+        auto applyLabel = CCLabelBMFont::create("WHITE", "bigFont.fnt");
         auto clearLabel = CCLabelBMFont::create("CLEAR", "bigFont.fnt");
-        if (!title || !previewLabel || !clearLabel) return true;
+        if (!title || !applyLabel || !clearLabel) return true;
 
         title->setScale(0.28f);
         title->setColor({255, 255, 255});
         title->setOpacity(230);
         title->setPosition({0.f, 34.f});
-
-        previewLabel->setScale(0.36f);
-        previewLabel->setColor({255, 255, 255});
+        applyLabel->setScale(0.36f);
         clearLabel->setScale(0.36f);
-        clearLabel->setColor({255, 255, 255});
 
-        auto preview = CCMenuItemSpriteExtra::create(
-            previewLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v07::onPreview)
+        auto apply = CCMenuItemSpriteExtra::create(
+            applyLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onApplyWhite)
         );
         auto clear = CCMenuItemSpriteExtra::create(
-            clearLabel, this, menu_selector(WhiteStructurePreviewEditorUI_v07::onClear)
+            clearLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onClearWhite)
         );
-        if (!preview || !clear) return true;
+        if (!apply || !clear) return true;
 
         auto size = CCDirector::sharedDirector()->getWinSize();
         menu->setPosition({size.width * 0.5f, size.height - 78.f});
-        preview->setPosition({-55.f, 0.f});
+        apply->setPosition({-55.f, 0.f});
         clear->setPosition({55.f, 0.f});
-        preview->setID("white-decorator-button-v07"_spr);
-        clear->setID("white-decorator-clear-v07"_spr);
+        apply->setID("ai-structure-white-button"_spr);
+        clear->setID("ai-structure-white-clear"_spr);
+        clear->setVisible(false);
 
         menu->addChild(title, 2);
-        menu->addChild(preview, 1);
+        menu->addChild(apply, 1);
         menu->addChild(clear, 1);
-        clear->setVisible(false);
         this->addChild(menu, 1001);
-
         m_fields->menu = menu;
-        m_fields->previewButton = preview;
+        m_fields->applyButton = apply;
         m_fields->clearButton = clear;
         return true;
     }
 
     std::vector<GameObject*> getSelection() {
         std::vector<GameObject*> result;
-
-        if (m_selectedObject && m_selectedObject->getParent()) {
-            result.push_back(m_selectedObject);
-        }
-
+        if (m_selectedObject && m_selectedObject->getParent()) result.push_back(m_selectedObject);
         if (m_selectedObjects) {
             auto count = m_selectedObjects->count();
             for (unsigned int i = 0; i < count; ++i) {
                 auto object = typeinfo_cast<GameObject*>(m_selectedObjects->objectAtIndex(i));
-                if (object && object->getParent() &&
-                    std::find(result.begin(), result.end(), object) == result.end()) {
+                if (object && object->getParent() && std::find(result.begin(), result.end(), object) == result.end())
                     result.push_back(object);
-                }
             }
         }
         return result;
     }
 
-    void clearPreview() {
-        for (auto* preview : m_fields->previews) {
-            if (preview && preview->getParent()) {
-                preview->removeFromParentAndCleanup(true);
-            }
+    void removeGenerated() {
+        for (auto* object : m_fields->generated) {
+            if (object && object->getParent()) object->removeFromParentAndCleanup(true);
         }
-        m_fields->previews.clear();
-        m_fields->previewVisible = false;
+        m_fields->generated.clear();
         if (m_fields->clearButton) m_fields->clearButton->setVisible(false);
     }
 
-    void onPreview(CCObject*) {
-        clearPreview();
+    void onApplyWhite(CCObject*) {
+        removeGenerated();
         if (!m_editorLayer || !m_editorLayer->m_objectLayer) return;
 
         auto selected = getSelection();
         if (selected.empty()) {
-            showMessage("White Decorator", "Select a structure first.");
+            showMessage("AI Decorator", "Selecciona una estructura primero.");
             return;
         }
 
         auto objectLayer = m_editorLayer->m_objectLayer;
-        unsigned int previewIndex = 0;
-
+        int index = 0;
         for (auto* source : selected) {
             if (!source || !source->getParent()) continue;
 
-            // Four native GD templates: square, spike, short ramp and long ramp.
-            auto templateID = getWhiteTemplateID(source);
-            auto preview = GameObject::createWithKey(templateID);
-            if (!preview) continue;
+            const int templateID = getSelectionTemplateID(source);
+            auto white = GameObject::createWithKey(templateID);
+            if (!white) continue;
 
-            preview->setID("white-decorator-object-v07"_spr);
-            preview->setTag(-100700 - static_cast<int>(previewIndex++));
-            preview->setColor({255, 255, 255});
-            preview->setOpacity(255);
-
-            preview->setRotation(source->getRotation());
-            preview->setFlipX(source->isFlipX());
-            preview->setFlipY(source->isFlipY());
+            // These are native GD objects, duplicated for the mod and marked with
+            // a unique mod ID/tag. They are never mistaken for the user's originals.
+            white->setID((std::string("ai-structure-") + getSelectionName(templateID)).c_str());
+            white->setTag(kSelectionTagBase - index++);
+            white->setColor({255, 255, 255});
+            white->setOpacity(255);
+            white->setRotation(source->getRotation());
+            white->setFlipX(source->isFlipX());
+            white->setFlipY(source->isFlipY());
 
             auto sourceSize = source->getContentSize();
-            auto templateSize = preview->getContentSize();
+            auto templateSize = white->getContentSize();
             float sx = source->getScaleX();
             float sy = source->getScaleY();
-
-            if (sourceSize.width > 0.01f && templateSize.width > 0.01f) {
+            if (sourceSize.width > 0.01f && templateSize.width > 0.01f)
                 sx *= sourceSize.width / templateSize.width;
-            }
-            if (sourceSize.height > 0.01f && templateSize.height > 0.01f) {
+            if (sourceSize.height > 0.01f && templateSize.height > 0.01f)
                 sy *= sourceSize.height / templateSize.height;
-            }
+            white->setScaleX(sx);
+            white->setScaleY(sy);
 
-            preview->setScaleX(sx);
-            preview->setScaleY(sy);
-
-            // Keep the temporary native object exactly over the source, even if
-            // the source is inside another editor node.
             auto worldPosition = source->getParent()->convertToWorldSpace(source->getPosition());
-            preview->setPosition(objectLayer->convertToNodeSpace(worldPosition));
-
-            // Temporary preview only. It is never inserted into the saved-object
-            // collection and is removed by CLEAR or before the next preview.
-            objectLayer->addChild(preview, 100000);
-            m_fields->previews.push_back(preview);
+            white->setPosition(objectLayer->convertToNodeSpace(worldPosition));
+            objectLayer->addChild(white, 100000);
+            m_fields->generated.push_back(white);
         }
 
-        if (m_fields->previews.empty()) {
-            showMessage("White Decorator", "No previewable objects were found.");
+        if (m_fields->generated.empty()) {
+            showMessage("AI Decorator", "No se pudieron crear los bloques de seleccion.");
             return;
         }
-
-        m_fields->previewVisible = true;
         if (m_fields->clearButton) m_fields->clearButton->setVisible(true);
     }
 
-    void onClear(CCObject*) {
-        clearPreview();
+    void onClearWhite(CCObject*) {
+        removeGenerated();
     }
 };
