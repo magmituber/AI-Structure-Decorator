@@ -209,7 +209,7 @@ class $modify(WhiteSelectionDecoratorEditorUI, EditorUI) {
                 vertices[2] = CCPoint(0.f, height * 0.5f);
             }
             else {
-                vertices[0] = {-width * 0.5f, -height * 0.5f};
+                vertices[0] = CCPoint(-width * 0.5f, -height * 0.5f);
                 vertices[1] = CCPoint(-width * 0.5f, height * 0.5f);
                 vertices[2] = CCPoint(width * 0.5f, -height * 0.5f);
             }
