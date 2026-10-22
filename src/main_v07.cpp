@@ -7,19 +7,15 @@
 using namespace geode::prelude;
 
 namespace {
-    // Native white/solid templates: their textures provide the white fill,
-    // rather than recoloring a normal outlined object.
-    constexpr int kSelectionBlock = 658;      // White Tile
-    constexpr int kSelectionSpike = 216;      // Colored Spike, forced to solid white
-    constexpr int kSelectionShortRamp = 713;  // White Tile Slope
-    constexpr int kSelectionLongRamp = 714;   // White Tile Wide Slope
     constexpr int kSelectionTagBase = -2081000;
 
     void showMessage(char const* title, char const* message) {
         FLAlertLayer::create(title, message, "OK")->show();
     }
 
-    bool isSpike(int id) { return id == 8 || id == 39 || id == 103; }
+    bool isSpike(int id) {
+        return id == 8 || id == 39 || id == 103;
+    }
 
     bool isSlope(int id) {
         switch (id) {
@@ -50,14 +46,13 @@ namespace {
         }
     }
 
-    int getSelectionTemplateID(GameObject* object) {
-        if (!object) return kSelectionBlock;
-        if (isSpike(object->m_objectID)) return kSelectionSpike;
-        if (isSlope(object->m_objectID)) {
-            auto size = object->getContentSize();
-            return size.width >= size.height * 1.65f ? kSelectionLongRamp : kSelectionShortRamp;
-        }
-        return kSelectionBlock;
+    enum class ShapeType { Block, Spike, Ramp };
+
+    ShapeType getShapeType(GameObject* object) {
+        if (!object) return ShapeType::Block;
+        if (isSpike(object->m_objectID)) return ShapeType::Spike;
+        if (isSlope(object->m_objectID)) return ShapeType::Ramp;
+        return ShapeType::Block;
     }
 
     class DraggableMenu : public CCMenu {
@@ -69,32 +64,54 @@ namespace {
         static DraggableMenu* create() {
             auto ret = new DraggableMenu();
             if (ret && ret->init()) { ret->autorelease(); return ret; }
-            CC_SAFE_DELETE(ret); return nullptr;
+            CC_SAFE_DELETE(ret);
+            return nullptr;
         }
+
         bool ccTouchBegan(CCTouch* touch, CCEvent*) override {
             auto point = this->convertTouchToNodeSpace(touch);
             m_pressed = nullptr;
             for (auto child : CCArrayExt<CCNode*, false>(this->getChildren())) {
                 auto item = typeinfo_cast<CCMenuItemSpriteExtra*>(child);
-                if (item && item->isVisible() && item->isEnabled() && item->boundingBox().containsPoint(point)) { m_pressed = item; break; }
+                if (item && item->isVisible() && item->isEnabled() && item->boundingBox().containsPoint(point)) {
+                    m_pressed = item;
+                    break;
+                }
             }
             if (!m_pressed) return false;
-            auto parent = this->getParent(); if (!parent) return false;
+            auto parent = this->getParent();
+            if (!parent) return false;
             m_startTouch = parent->convertToNodeSpace(touch->getLocation());
-            m_startPosition = this->getPosition(); m_dragging = false; return true;
+            m_startPosition = this->getPosition();
+            m_dragging = false;
+            return true;
         }
+
         void ccTouchMoved(CCTouch* touch, CCEvent*) override {
-            if (!m_pressed) return; auto parent = this->getParent(); if (!parent) return;
+            if (!m_pressed) return;
+            auto parent = this->getParent();
+            if (!parent) return;
             auto delta = parent->convertToNodeSpace(touch->getLocation()) - m_startTouch;
             if (!m_dragging && (std::fabs(delta.x) > 8.f || std::fabs(delta.y) > 8.f)) m_dragging = true;
             if (m_dragging) {
-                auto win = CCDirector::sharedDirector()->getWinSize(); auto pos = m_startPosition + delta;
+                auto win = CCDirector::sharedDirector()->getWinSize();
+                auto pos = m_startPosition + delta;
                 pos.x = std::max(65.f, std::min(pos.x, win.width - 65.f));
-                pos.y = std::max(35.f, std::min(pos.y, win.height - 35.f)); this->setPosition(pos);
+                pos.y = std::max(35.f, std::min(pos.y, win.height - 35.f));
+                this->setPosition(pos);
             }
         }
-        void ccTouchEnded(CCTouch*, CCEvent*) override { if (m_pressed && !m_dragging) m_pressed->activate(); m_pressed = nullptr; m_dragging = false; }
-        void ccTouchCancelled(CCTouch*, CCEvent*) override { m_pressed = nullptr; m_dragging = false; }
+
+        void ccTouchEnded(CCTouch*, CCEvent*) override {
+            if (m_pressed && !m_dragging) m_pressed->activate();
+            m_pressed = nullptr;
+            m_dragging = false;
+        }
+
+        void ccTouchCancelled(CCTouch*, CCEvent*) override {
+            m_pressed = nullptr;
+            m_dragging = false;
+        }
     };
 }
 
@@ -103,79 +120,144 @@ class $modify(WhiteSelectionDecoratorEditorUI, EditorUI) {
         DraggableMenu* menu = nullptr;
         CCMenuItemSpriteExtra* applyButton = nullptr;
         CCMenuItemSpriteExtra* clearButton = nullptr;
-        std::vector<GameObject*> generated;
+        std::vector<CCDrawNode*> generated;
     };
 
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) return false;
-        auto menu = DraggableMenu::create(); if (!menu) return true;
+
+        auto menu = DraggableMenu::create();
+        if (!menu) return true;
         menu->setID("ai-structure-selection-menu"_spr);
+
         auto title = CCLabelBMFont::create("AI DECORATOR", "bigFont.fnt");
         auto applyLabel = CCLabelBMFont::create("WHITE", "bigFont.fnt");
         auto clearLabel = CCLabelBMFont::create("CLEAR", "bigFont.fnt");
         if (!title || !applyLabel || !clearLabel) return true;
-        title->setScale(0.28f); title->setColor({255,255,255}); title->setOpacity(230); title->setPosition({0.f,34.f});
-        applyLabel->setScale(0.36f); clearLabel->setScale(0.36f);
+
+        title->setScale(0.28f);
+        title->setColor({255,255,255});
+        title->setOpacity(230);
+        title->setPosition({0.f,34.f});
+        applyLabel->setScale(0.36f);
+        clearLabel->setScale(0.36f);
+
         auto apply = CCMenuItemSpriteExtra::create(applyLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onApplyWhite));
         auto clear = CCMenuItemSpriteExtra::create(clearLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onClearWhite));
         if (!apply || !clear) return true;
-        auto size = CCDirector::sharedDirector()->getWinSize(); menu->setPosition({size.width * 0.5f, size.height - 78.f});
-        apply->setPosition({-55.f,0.f}); clear->setPosition({55.f,0.f});
-        apply->setID("ai-structure-white-button"_spr); clear->setID("ai-structure-white-clear"_spr); clear->setVisible(false);
-        menu->addChild(title,2); menu->addChild(apply,1); menu->addChild(clear,1); this->addChild(menu,1001);
-        m_fields->menu=menu; m_fields->applyButton=apply; m_fields->clearButton=clear; return true;
+
+        auto size = CCDirector::sharedDirector()->getWinSize();
+        menu->setPosition({size.width * 0.5f, size.height - 78.f});
+        apply->setPosition({-55.f,0.f});
+        clear->setPosition({55.f,0.f});
+        apply->setID("ai-structure-white-button"_spr);
+        clear->setID("ai-structure-white-clear"_spr);
+        clear->setVisible(false);
+        menu->addChild(title, 2);
+        menu->addChild(apply, 1);
+        menu->addChild(clear, 1);
+        this->addChild(menu, 1001);
+
+        m_fields->menu = menu;
+        m_fields->applyButton = apply;
+        m_fields->clearButton = clear;
+        return true;
     }
 
     std::vector<GameObject*> getSelection() {
         std::vector<GameObject*> result;
         if (m_selectedObject && m_selectedObject->getParent()) result.push_back(m_selectedObject);
         if (m_selectedObjects) {
-            auto count=m_selectedObjects->count();
-            for (unsigned int i=0;i<count;++i) {
-                auto object=typeinfo_cast<GameObject*>(m_selectedObjects->objectAtIndex(i));
-                if (object && object->getParent() && std::find(result.begin(),result.end(),object)==result.end()) result.push_back(object);
+            auto count = m_selectedObjects->count();
+            for (unsigned int i = 0; i < count; ++i) {
+                auto object = typeinfo_cast<GameObject*>(m_selectedObjects->objectAtIndex(i));
+                if (object && object->getParent() && std::find(result.begin(), result.end(), object) == result.end()) {
+                    result.push_back(object);
+                }
             }
         }
         return result;
     }
 
     void removeGenerated() {
-        for (auto* object:m_fields->generated) if (object && object->getParent()) object->removeFromParentAndCleanup(true);
-        m_fields->generated.clear(); if (m_fields->clearButton) m_fields->clearButton->setVisible(false);
+        for (auto* node : m_fields->generated) {
+            if (node && node->getParent()) node->removeFromParentAndCleanup(true);
+        }
+        m_fields->generated.clear();
+        if (m_fields->clearButton) m_fields->clearButton->setVisible(false);
+    }
+
+    CCDrawNode* makeSolidWhite(GameObject* source, ShapeType type) {
+        if (!source) return nullptr;
+
+        auto draw = CCDrawNode::create();
+        if (!draw) return nullptr;
+
+        auto size = source->getContentSize();
+        float width = std::max(1.f, size.width);
+        float height = std::max(1.f, size.height);
+        auto white = ccc4f(1.f, 1.f, 1.f, 1.f);
+
+        if (type == ShapeType::Block) {
+            draw->drawRect({-width * 0.5f, -height * 0.5f}, {width * 0.5f, height * 0.5f}, white, 0.f, white);
+        }
+        else {
+            CCPoint vertices[3];
+            if (type == ShapeType::Spike) {
+                vertices[0] = {-width * 0.5f, -height * 0.5f};
+                vertices[1] = { width * 0.5f, -height * 0.5f};
+                vertices[2] = { 0.f, height * 0.5f};
+            }
+            else {
+                vertices[0] = {-width * 0.5f, -height * 0.5f};
+                vertices[1] = {-width * 0.5f,  height * 0.5f};
+                vertices[2] = { width * 0.5f, -height * 0.5f};
+            }
+            draw->drawPolygon(vertices, 3, white, 0.f, white);
+        }
+
+        draw->setOpacity(255);
+        draw->setRotation(source->getRotation());
+        draw->setScaleX(source->getScaleX() * (source->isFlipX() ? -1.f : 1.f));
+        draw->setScaleY(source->getScaleY() * (source->isFlipY() ? -1.f : 1.f));
+        draw->setTag(kSelectionTagBase - static_cast<int>(m_fields->generated.size()));
+        return draw;
     }
 
     void onApplyWhite(CCObject*) {
-        removeGenerated(); if (!m_editorLayer || !m_editorLayer->m_objectLayer) return;
-        auto selected=getSelection(); if (selected.empty()) { showMessage("AI Decorator","Selecciona una estructura primero."); return; }
-        auto objectLayer=m_editorLayer->m_objectLayer; int index=0;
-        for (auto* source:selected) {
-            if (!source || !source->getParent()) continue;
-            const int templateID=getSelectionTemplateID(source); auto white=GameObject::createWithKey(templateID); if (!white) continue;
-            white->setTag(kSelectionTagBase-index++);
-            // Force the color and opacity to full white while preserving the native
-            // white tile/slope texture used by the block and ramps.
-            white->setColor({255,255,255});
-            white->setOpacity(255);
-            white->setCascadeColorEnabled(true);
-            white->setCascadeOpacityEnabled(true);
-            white->setChildColor({255,255,255});
-            white->setRotation(source->getRotation());
-            white->setFlipX(source->isFlipX()); white->setFlipY(source->isFlipY());
-            auto sourceSize=source->getContentSize(); auto templateSize=white->getContentSize();
-            float sx=source->getScaleX(), sy=source->getScaleY();
-            if (sourceSize.width>0.01f && templateSize.width>0.01f) sx*=sourceSize.width/templateSize.width;
-            if (sourceSize.height>0.01f && templateSize.height>0.01f) sy*=sourceSize.height/templateSize.height;
-            white->setScaleX(sx); white->setScaleY(sy);
-            auto worldPosition=source->getParent()->convertToWorldSpace(source->getPosition());
-            white->setPosition(objectLayer->convertToNodeSpace(worldPosition));
-            // Put generated pieces above every normal level object.
-            objectLayer->addChild(white, 100000);
-            white->setZOrder(100000);
-            m_fields->generated.push_back(white);
+        removeGenerated();
+        if (!m_editorLayer || !m_editorLayer->m_objectLayer) return;
+
+        auto selected = getSelection();
+        if (selected.empty()) {
+            showMessage("AI Decorator", "Selecciona una estructura primero.");
+            return;
         }
-        if (m_fields->generated.empty()) { showMessage("AI Decorator","No se pudieron crear los bloques de seleccion."); return; }
+
+        auto objectLayer = m_editorLayer->m_objectLayer;
+        for (auto* source : selected) {
+            if (!source || !source->getParent()) continue;
+
+            auto draw = makeSolidWhite(source, getShapeType(source));
+            if (!draw) continue;
+
+            auto worldPosition = source->getParent()->convertToWorldSpace(source->getPosition());
+            draw->setPosition(objectLayer->convertToNodeSpace(worldPosition));
+
+            // Pure white geometry, no native GD sprite texture, and above all level objects.
+            objectLayer->addChild(draw, 100000);
+            draw->setZOrder(100000);
+            m_fields->generated.push_back(draw);
+        }
+
+        if (m_fields->generated.empty()) {
+            showMessage("AI Decorator", "No se pudieron crear los bloques blancos.");
+            return;
+        }
         if (m_fields->clearButton) m_fields->clearButton->setVisible(true);
     }
 
-    void onClearWhite(CCObject*) { removeGenerated(); }
+    void onClearWhite(CCObject*) {
+        removeGenerated();
+    }
 };
