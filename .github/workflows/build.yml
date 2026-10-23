@@ -20,11 +20,11 @@ jobs:
         uses: geode-sdk/build-geode-mod@main
         with:
           target: Android64
-          sdk: given
+          sdk: latest
           build-config: Release
       - name: Upload compiled mod
         uses: actions/upload-artifact@v4
         with:
-          name: magmituber.ai-structure-decorator-Android64-0.8.1
+          name: magmituber.ai-structure-decorator-Android64-0.9.0
           path: ${{ steps.build.outputs.build-output }}/*.geode
           if-no-files-found: error
