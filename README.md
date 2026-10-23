@@ -1,16 +1,17 @@
-# White Structure Preview
+# Magmituber AI Structure Decorator
 
-A Geometry Dash editor mod for Geode that displays a white outline preview over selected blocks, slopes, and spikes.
+A Geometry Dash editor utility for Geode. The current implementation provides a white preview/selection helper for selected blocks, slopes, and spikes. It does **not yet** perform Gemini-powered automatic decoration; a successful build only confirms that the current source compiles.
 
-## Use
-1. Install the matching Android build through Geode.
-2. Open a level in the editor and select one or more objects.
-3. Tap **PREVIEW** to show the outline.
-4. Tap **CONFIRM** to clear the preview. This does not alter or duplicate the original objects.
-5. Drag the button group to reposition it.
+## Android build
 
-## Build
-GitHub Actions builds only the Android64 `.geode` package on pushes to `main`, using the Geode SDK version specified in `mod.json` to keep the SDK and Geometry Dash bindings compatible. Open the Actions tab and download the artifact from a successful run.
+GitHub Actions builds the **Android64** `.geode` package only (no Android32 target). Pushes to `main` start the workflow automatically. Open the repository's Actions tab, select the latest **Build Geode mod** run, and download its artifact after the run succeeds.
 
-## Status
-This is an early version. A successful build verifies compilation, not all in-game behavior. Test in a copied level before relying on it.
+## Test safely
+
+1. Install the artifact that matches your Geometry Dash and Geode versions.
+2. Test in a copied level first.
+3. Check the workflow result before treating the artifact as a successful build.
+
+## Current status
+
+This is an early editor utility. The mobile AI prompt, preview workflow, and real Gemini-backed structure decoration still need to be implemented and tested.
