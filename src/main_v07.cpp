@@ -96,8 +96,13 @@ namespace {
             if (m_dragging) {
                 auto win = CCDirector::sharedDirector()->getWinSize();
                 auto pos = m_startPosition + delta;
-                pos.x = std::max(65.f, std::min(pos.x, win.width - 65.f));
-                pos.y = std::max(35.f, std::min(pos.y, win.height - 35.f));
+                // Keep the draggable controls reachable even on narrow phone screens.
+                auto marginX = std::min(65.f, std::max(18.f, win.width * 0.22f));
+                auto marginY = std::min(35.f, std::max(18.f, win.height * 0.12f));
+                auto maxX = std::max(marginX, win.width - marginX);
+                auto maxY = std::max(marginY, win.height - marginY);
+                pos.x = std::max(marginX, std::min(pos.x, maxX));
+                pos.y = std::max(marginY, std::min(pos.y, maxY));
                 this->setPosition(pos);
             }
         }
@@ -135,21 +140,24 @@ class $modify(WhiteSelectionDecoratorEditorUI, EditorUI) {
         auto clearLabel = CCLabelBMFont::create("CLEAR", "bigFont.fnt");
         if (!title || !applyLabel || !clearLabel) return true;
 
-        title->setScale(0.28f);
+        auto size = CCDirector::sharedDirector()->getWinSize();
+        // Use a tighter layout on phones / narrow editor viewports.
+        bool compact = size.width < 700.f;
+        title->setScale(compact ? 0.23f : 0.28f);
         title->setColor({255,255,255});
         title->setOpacity(230);
-        title->setPosition({0.f,34.f});
-        applyLabel->setScale(0.36f);
-        clearLabel->setScale(0.36f);
+        title->setPosition({0.f, compact ? 27.f : 34.f});
+        applyLabel->setScale(compact ? 0.29f : 0.36f);
+        clearLabel->setScale(compact ? 0.29f : 0.36f);
 
         auto apply = CCMenuItemSpriteExtra::create(applyLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onApplyWhite));
         auto clear = CCMenuItemSpriteExtra::create(clearLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onClearWhite));
         if (!apply || !clear) return true;
 
-        auto size = CCDirector::sharedDirector()->getWinSize();
-        menu->setPosition({size.width * 0.5f, size.height - 78.f});
-        apply->setPosition({-55.f,0.f});
-        clear->setPosition({55.f,0.f});
+        menu->setPosition({size.width * 0.5f, size.height - (size.height < 400.f ? 62.f : 78.f)});
+        auto buttonOffset = compact ? 43.f : 55.f;
+        apply->setPosition({-buttonOffset,0.f});
+        clear->setPosition({buttonOffset,0.f});
         apply->setID("ai-structure-white-button"_spr);
         clear->setID("ai-structure-white-clear"_spr);
         clear->setVisible(false);
