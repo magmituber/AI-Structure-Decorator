@@ -147,8 +147,9 @@ class $modify(WhiteSelectionDecoratorEditorUI, EditorUI) {
         title->setColor({255,255,255});
         title->setOpacity(230);
         title->setPosition({0.f, compact ? 27.f : 34.f});
-        applyLabel->setScale(compact ? 0.29f : 0.36f);
-        clearLabel->setScale(compact ? 0.29f : 0.36f);
+        // Keep touch targets and text readable on narrow Android screens.
+        applyLabel->setScale(compact ? 0.38f : 0.36f);
+        clearLabel->setScale(compact ? 0.38f : 0.36f);
 
         auto apply = CCMenuItemSpriteExtra::create(applyLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onApplyWhite));
         auto clear = CCMenuItemSpriteExtra::create(clearLabel, this, menu_selector(WhiteSelectionDecoratorEditorUI::onClearWhite));
