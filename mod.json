@@ -1,10 +1,13 @@
 {
   "geode": "5.11.2",
-  "gd": { "android": "2.2081", "win": "2.2081" },
-  "id": "magmituber.ai-structure-decorator",
-  "name": "AI Structure Decorator",
-  "version": "v0.8.1",
-  "developer": "magmituber",
-  "description": "Editor utility that duplicates native white Geometry Dash pieces as uniquely identified selection objects: white tile, spike, white tile slope and wide slope.",
-  "tags": ["editor", "utility", "enhancement", "decoration"]
+  "gd": {
+    "win": "2.2081",
+    "android": "2.2081"
+  },
+  "id": "rmagmituber.autodeco-vistas",
+  "name": "AutoDeco Vistas",
+  "version": "v1.0.0",
+  "developer": "RMagmituber",
+  "description": "Panel movil en el editor que crea copias blancas de los objetos seleccionados conservando rotacion y transformaciones.",
+  "tags": ["editor", "utility"]
 }
