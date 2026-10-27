@@ -1,17 +1,18 @@
 cmake_minimum_required(VERSION 3.21)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-project(AIStructureDecorator VERSION 0.7.0)
+project(AutoDecoVistas VERSION 1.0.0)
 
-# Active implementation. The previous v0.6 source is kept in the repository
-# for reference, but only v0.7 is compiled.
-set(SOURCES src/main_v07.cpp)
+file(GLOB SOURCES CONFIGURE_DEPENDS
+    src/*.cpp
+)
+
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 if (NOT DEFINED ENV{GEODE_SDK})
-    message(FATAL_ERROR "GEODE_SDK is not set. Use the Geode SDK build action or install the SDK.")
+    message(FATAL_ERROR "Unable to find Geode SDK! Please define GEODE_SDK environment variable")
 endif()
 
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
